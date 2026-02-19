@@ -1,5 +1,5 @@
 ﻿namespace Crawler.Contracts
 {
-    public record StartCrawl(string Coin);
-    public record UrlMatched(string Coin, string Url);
+    public record StartCrawl(string Filter);
+    public record UrlMatched(string Filter, string Url);
 }

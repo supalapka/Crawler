@@ -13,7 +13,7 @@ class Program
                 h.Password("guest");
             });
 
-            cfg.ReceiveEndpoint("crawler.start", e =>
+            cfg.ReceiveEndpoint("url.matched", e =>
             {
                 e.Consumer<UrlMatchedConsumer>();
             });

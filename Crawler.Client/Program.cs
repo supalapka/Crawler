@@ -27,7 +27,8 @@ class Program
             if (filter.ToLower() == "exit")
                 continue;
 
-            await bus.Publish(new StartCrawl(filter));
+            var endpoint = await bus.GetSendEndpoint(new Uri("queue:crawler.start"));
+            await endpoint.Send(new StartCrawl(filter));
 
             Console.WriteLine("Message sent");
         }

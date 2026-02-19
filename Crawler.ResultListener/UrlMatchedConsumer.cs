@@ -7,7 +7,7 @@ namespace Crawler.ResultListener
     {
         public Task Consume(ConsumeContext<UrlMatched> context)
         {
-                Console.WriteLine($"[Listener + output] Coin matched:{context.Message.Url}: {context.Message.Url}");
+            Console.WriteLine($"{context.Message.Title} \n {context.Message.Url} \n \n");
             return Task.CompletedTask;
         }
     }

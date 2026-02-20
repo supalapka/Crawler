@@ -12,8 +12,11 @@ using Microsoft.Extensions.Options;
 internal class ForkLogCrawlService : ICrawlService
 {
     private readonly IPublishEndpoint _publishEndpoint;
-    private readonly CrawlPolicy _policy;
     private readonly IBrowsingContext _context;
+
+    private readonly CrawlPolicy _policy;
+    private readonly VisitedSet _visited = new();
+
     private readonly string _baseUrl = "https://forklog.com/tag/crypto";
 
     private ForkLogFilterParsing _filterParsing = new ForkLogFilterParsing();
@@ -40,6 +43,9 @@ internal class ForkLogCrawlService : ICrawlService
         foreach (var url in links)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            if (!_visited.TryAdd(url))
+                continue;
 
             var pageHtml = await _fetcher.FetchAsync(url, cancellationToken);
 

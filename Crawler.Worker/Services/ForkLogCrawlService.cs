@@ -47,7 +47,7 @@ internal class ForkLogCrawlService : ICrawlService
             var html = await _fetcher.FetchAsync(url, cancellationToken);
 
             if (await _filterParsing.ContentMatchFilter(html, coinSymbol))
-                await _publishEndpoint.Publish(new UrlMatched(coinSymbol, url), cancellationToken);
+                await _publishEndpoint.Publish(new UrlMatched(coinSymbol, "", url), cancellationToken);
 
             if (depth < _policy.MaxDepth)
             {

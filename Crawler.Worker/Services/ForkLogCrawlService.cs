@@ -32,13 +32,11 @@ internal class ForkLogCrawlService : ICrawlService
 
     public async Task StartAsync(string filter, CancellationToken cancellationToken)
     {
-        // var coinSymbol = filter.ToLower();
-        var coinSymbol = "биткоин"; // tmp fast solution
-        Console.WriteLine($"[CrawlService] Start crawling for {coinSymbol}");
+        Console.WriteLine($"[CrawlService] Start crawling for {filter}");
 
-        var html = await _fetcher.FetchAsync(_baseUrl, cancellationToken);
-        var document = await GetDocumentFromHtmlAsync(html);
-        var links = ExtractArticleLinks(document);
+        var coinSymbol = "биткоин"; // tmp fast solution
+
+        var links = await GeContentLinksByUrl(_baseUrl, cancellationToken);
 
         foreach (var url in links)
         {
@@ -47,15 +45,21 @@ internal class ForkLogCrawlService : ICrawlService
             if (!_visited.TryAdd(url))
                 continue;
 
-            var pageHtml = await _fetcher.FetchAsync(url, cancellationToken);
-
-            if (await _filterParsing.ContentMatchFilter(pageHtml, coinSymbol))
+            if (await IsPageContentHasFilterByUrl(url, coinSymbol, cancellationToken))
                 await _publishEndpoint.Publish(new UrlMatched(coinSymbol, url), cancellationToken);
 
             await Task.Delay(_policy.DelayBetweenRequestsMs, cancellationToken);
         }
 
         Console.WriteLine($"[CrawlService] END");
+    }
+
+    private async Task<List<string>> GeContentLinksByUrl(string url, CancellationToken cancellationToken)
+    {
+        var html = await _fetcher.FetchAsync(url, cancellationToken);
+        var document = await GetDocumentFromHtmlAsync(html);
+
+        return ExtractArticleLinks(document);
     }
 
     private async Task<IDocument> GetDocumentFromHtmlAsync(string html)
@@ -72,5 +76,15 @@ internal class ForkLogCrawlService : ICrawlService
             .Distinct()
             .Take(_policy.MaxPages)
             .ToList();
+    }
+
+    private async Task<bool> IsPageContentHasFilterByUrl(string url, string filter, CancellationToken cancellationToken)
+    {
+        var pageHtml = await _fetcher.FetchAsync(url, cancellationToken);
+
+        if (await _filterParsing.ContentMatchFilter(pageHtml, filter))
+            return true;
+
+        return false;
     }
 }

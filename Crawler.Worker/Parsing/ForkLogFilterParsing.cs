@@ -22,14 +22,17 @@ namespace Crawler.Worker.Parsing
                 return false;
 
             var regex = BuildRegex(filter);
+
             return regex.IsMatch(contentText);
         }
 
         private string GetForkLogContent(IDocument articleDoc)
         {
             var contentElement = articleDoc.QuerySelector("div.post_content");
-            contentElement.QuerySelector(".aside_subscribe_blk")?.Remove();
+            if (contentElement == null)
+                return string.Empty;
 
+            contentElement.QuerySelector(".aside_subscribe_blk")?.Remove();
             return contentElement.TextContent ?? string.Empty;
         }
 
@@ -43,6 +46,5 @@ namespace Crawler.Worker.Parsing
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled
             );
         }
-
     }
 }

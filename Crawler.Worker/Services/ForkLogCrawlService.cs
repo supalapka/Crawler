@@ -2,23 +2,28 @@
 using AngleSharp.Dom;
 using AngleSharp.Html.Dom;
 using Crawler.Contracts;
+using Crawler.Worker.Config;
 using Crawler.Worker.Infrastructure;
 using Crawler.Worker.Parsing;
 using Crawler.Worker.Services;
 using MassTransit;
+using Microsoft.Extensions.Options;
 
 internal class ForkLogCrawlService : ICrawlService
 {
     private readonly IPublishEndpoint _publishEndpoint;
+    private readonly CrawlPolicy _policy;
     private readonly IBrowsingContext _context;
     private readonly string _baseUrl = "https://forklog.com/tag/crypto";
 
     private ForkLogFilterParsing _filterParsing = new ForkLogFilterParsing();
     private PageFetcher _fetcher = new PageFetcher();
 
-    public ForkLogCrawlService(IPublishEndpoint publishEndpoint)
+    public ForkLogCrawlService(IPublishEndpoint publishEndpoint,
+        IOptions<CrawlPolicy> options)
     {
         _publishEndpoint = publishEndpoint;
+        _policy = options.Value;
         _context = BrowsingContext.New(Configuration.Default);
     }
 
@@ -41,7 +46,7 @@ internal class ForkLogCrawlService : ICrawlService
             if (await _filterParsing.ContentMatchFilter(pageHtml, coinSymbol))
                 await _publishEndpoint.Publish(new UrlMatched(coinSymbol, url), cancellationToken);
 
-            await Task.Delay(300, cancellationToken);
+            await Task.Delay(_policy.DelayBetweenRequestsMs, cancellationToken);
         }
 
         Console.WriteLine($"[CrawlService] END");
@@ -59,7 +64,7 @@ internal class ForkLogCrawlService : ICrawlService
             .Select(a => a.Href)
             .Where(href => href.Contains("/news/"))
             .Distinct()
-            .Take(20)
+            .Take(_policy.MaxPages)
             .ToList();
     }
 }

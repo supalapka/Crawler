@@ -1,6 +1,8 @@
-﻿using Crawler.Worker.Consumers;
+﻿using Crawler.Worker.Config;
+using Crawler.Worker.Consumers;
 using Crawler.Worker.Services;
 using MassTransit;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 class Program
@@ -8,6 +10,14 @@ class Program
     static async Task Main()
     {
         var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+           .AddJsonFile("appsettings.json", optional: false)
+           .AddEnvironmentVariables()
+           .Build();
+
+        services.AddOptions<CrawlPolicy>()
+            .Bind(configuration.GetSection("Crawling"))
+            .Validate(p => p.MaxPages > 0);
 
         services.AddSingleton<ICrawlService, ForkLogCrawlService>();
 

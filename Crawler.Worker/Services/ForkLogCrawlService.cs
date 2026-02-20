@@ -34,16 +34,12 @@ internal class ForkLogCrawlService : ICrawlService
     public async Task StartAsync(string filter, CancellationToken cancellationToken)
     {
         Console.WriteLine($"[CrawlService] Start widthraw for {filter}");
-
         var coinSymbol = "биткоин"; // tmp fast solution
 
         while (_queue.Any() && _visited.Count < _policy.MaxPages)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var (url, depth) = _queue.Dequeue();
-
-                Console.WriteLine($"depth {depth} \n ");
-                Console.WriteLine($"https://www.bybit.com/en/user/9444567/usdt/TBhUSDfmi64rcwdF2EbbEJLP5jyG2WPJf7/try-withdraw/non-iternal");
 
             if (!_visited.TryAdd(url))
                 continue;

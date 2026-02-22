@@ -15,8 +15,8 @@ class Program
            .AddEnvironmentVariables()
            .Build();
 
-        services.AddOptions<CrawlPolicy>()
-            .Bind(configuration.GetSection("Crawling"))
+        services.AddOptions<ForklogCrawlPolicy>()
+            .Bind(configuration.GetSection("ForklogCrawlPolicy"))
             .Validate(p => p.MaxPages > 0);
 
         services.AddSingleton<ICrawlService, ForkLogCrawlService>();

@@ -17,6 +17,7 @@ internal class ForkLogCrawlService : ICrawlService
     private readonly CrawlPolicy _policy;
     private readonly VisitedSet _visited = new();
 
+
     private readonly string _baseUrl = "https://forklog.com/tag/crypto";
     private readonly Queue<(string Url, int Depth)> _queue = new();
 
@@ -34,9 +35,10 @@ internal class ForkLogCrawlService : ICrawlService
     public async Task StartAsync(string filter, CancellationToken cancellationToken)
     {
         Console.WriteLine($"[CrawlService] Start widthraw for {filter}");
-        var coinSymbol = "биткоин"; // tmp fast solution
+        var coinSymbol = filter;
+        int pagesCrawledThisRun = 0;
 
-        while (_queue.Any() && _visited.Count < _policy.MaxPages)
+        while (_queue.Any() && pagesCrawledThisRun < _policy.MaxPages)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var (url, depth) = _queue.Dequeue();
@@ -44,7 +46,7 @@ internal class ForkLogCrawlService : ICrawlService
             if (!_visited.TryAdd(url))
                 continue;
 
-            var html = await _fetcher.FetchAsync(url, cancellationToken);
+            string html = await FetchWithRetryAsync(url, cancellationToken);
 
             if (await _filterParsing.ContentMatchFilter(html, coinSymbol))
                 await _publishEndpoint.Publish(new UrlMatched(coinSymbol, "", url), cancellationToken);
@@ -57,10 +59,32 @@ internal class ForkLogCrawlService : ICrawlService
                 foreach (var link in links)
                     _queue.Enqueue((link, depth + 1));
             }
+            pagesCrawledThisRun++;
             await Task.Delay(_policy.DelayBetweenRequestsMs, cancellationToken);
         }
 
         Console.WriteLine($"[CrawlService] END");
+    }
+
+    private async Task<string> FetchWithRetryAsync(string url, CancellationToken cancellationToken)
+    {
+        int[] delays = { 3000, 8000, 15000 };
+
+        for (int i = 0; i < delays.Length; i++)
+        {
+            try
+            {
+                return await _fetcher.FetchAsync(url, cancellationToken);
+            }
+            catch (HttpRequestException ex) when (ex.Message.Contains("403"))
+            {
+                Console.WriteLine($"[CrawlService] 403 on {url}, waiting {delays[i]}ms before retry {i + 1}");
+                await Task.Delay(delays[i], cancellationToken);
+            }
+        }
+
+        // final attempt, let it throw if still 403
+        return await _fetcher.FetchAsync(url, cancellationToken);
     }
 
     private async Task<IDocument> GetDocumentFromHtmlAsync(string html)

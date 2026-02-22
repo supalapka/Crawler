@@ -16,7 +16,7 @@ internal class ForkLogCrawlService : ICrawlService
 
     private readonly CrawlPolicy _policy;
     private readonly VisitedSet _visited = new();
-
+    private readonly HtmlCache _htmlCache = new();
 
     private readonly string _baseUrl = "https://forklog.com/tag/crypto";
     private readonly Queue<(string Url, int Depth)> _queue = new();
@@ -38,6 +38,19 @@ internal class ForkLogCrawlService : ICrawlService
         var coinSymbol = filter;
         int pagesCrawledThisRun = 0;
 
+        if (_htmlCache.Any())
+        {
+            Console.WriteLine($"[CrawlService] Scanning {_htmlCache.Count} cached pages for {filter}");
+            foreach (var (url, html) in _htmlCache.GetAll())
+            {
+                if (await _filterParsing.ContentMatchFilter(html, filter))
+                    await _publishEndpoint.Publish(new UrlMatched(filter, "", url), cancellationToken);
+            }
+        }
+
+        if (!_queue.Any())
+            _queue.Enqueue((_baseUrl, 0));
+
         while (_queue.Any() && pagesCrawledThisRun < _policy.MaxPages)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -47,6 +60,7 @@ internal class ForkLogCrawlService : ICrawlService
                 continue;
 
             string html = await FetchWithRetryAsync(url, cancellationToken);
+            _htmlCache.Store(url, html);
 
             if (await _filterParsing.ContentMatchFilter(html, coinSymbol))
                 await _publishEndpoint.Publish(new UrlMatched(coinSymbol, "", url), cancellationToken);

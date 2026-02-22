@@ -53,19 +53,15 @@ internal class ForkLogCrawlService : ICrawlService
                 if (articlesProcessed >= _policy.MaxPages)
                     break;
 
-                if (_htmlCache.TryGet(link, out var cachedHtml))
-                {
-                    if (await _filterParsing.ContentMatchFilter(cachedHtml, filter))
-                        await _publishEndpoint.Publish(new UrlMatched(filter, "", link), cancellationToken);
+                string html;
 
-                    articlesProcessed++;
-                    continue;
+                if (_htmlCache.TryGet(link, out html) == false)
+                {
+                    html = await FetchWithRetryAsync(link, cancellationToken);
+                    _htmlCache.Store(link, html);
                 }
 
-                string articleHtml = await FetchWithRetryAsync(link, cancellationToken);
-                _htmlCache.Store(link, articleHtml);
-
-                if (await _filterParsing.ContentMatchFilter(articleHtml, filter))
+                if (await _filterParsing.ContentMatchFilter(html, filter))
                     await _publishEndpoint.Publish(new UrlMatched(filter, "", link), cancellationToken);
 
                 articlesProcessed++;

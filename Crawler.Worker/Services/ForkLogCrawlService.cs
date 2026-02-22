@@ -97,7 +97,7 @@ internal class ForkLogCrawlService : ICrawlService
         return document.QuerySelectorAll("a")
             .OfType<IHtmlAnchorElement>()
             .Select(a => a.Href)
-            .Where(href => href.Contains("/news/"))
+            .Where(href => href.Contains("forklog.com") && href.Contains("/news/"))
             .Distinct()
             .ToList();
     }

@@ -1,6 +1,7 @@
 ﻿using Crawler.Worker.Config;
 using Crawler.Worker.Consumers;
 using Crawler.Worker.Services;
+using GreenPipes;
 using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,8 +43,15 @@ class Program
 
                 cfg.ReceiveEndpoint("crawler.start", e =>
                 {
-                    e.UseMessageRetry(r => r.Interval(retryPolicy.RetryCount, 
-                        TimeSpan.FromSeconds(retryPolicy.IntervalSeconds)));
+                    e.UseMessageRetry(r =>
+                        r.Intervals(
+                            Enumerable.Repeat(
+                                TimeSpan.FromSeconds(retryPolicy.IntervalSeconds),
+                                retryPolicy.RetryCount
+                            ).ToArray()
+                        )
+                    );
+
                     e.ConfigureConsumer<StartCrawlConsumer>(context);
                 });
             });

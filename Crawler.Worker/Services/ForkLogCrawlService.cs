@@ -34,7 +34,6 @@ internal class ForkLogCrawlService : ICrawlService
     public async Task StartAsync(string filter, CancellationToken cancellationToken)
     {
         Console.WriteLine($"[CrawlService] Start ForkLog crawl for {filter}");
-
         int pagePostsOffset = 0;
         int articlesProcessed = 0;
 
@@ -113,9 +112,13 @@ internal class ForkLogCrawlService : ICrawlService
 
         for (int i = 0; i < delays.Length; i++)
         {
+            var start = DateTime.UtcNow;
             try
             {
-                return await _fetcher.FetchAsync(url, cancellationToken);
+                Console.WriteLine($"[Fetch start] {start:O}");
+                var result = await _fetcher.FetchAsync(url, cancellationToken);
+                Console.WriteLine($"[Fetch end] {DateTime.UtcNow:O}, elapsed: {DateTime.UtcNow - start}");
+                return result;
             }
             catch (HttpRequestException ex) when (ex.Message.Contains("403"))
             {

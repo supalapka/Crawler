@@ -1,0 +1,19 @@
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /app
+
+# Copy solution and project files
+COPY Crawler.Contracts/ Crawler.Contracts/
+COPY Crawler.Worker/ Crawler.Worker/
+
+# Restore and build
+WORKDIR /app/Crawler.Worker
+RUN dotnet publish -c Release -o /app/publish
+
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/runtime:9.0
+WORKDIR /app
+COPY --from=build /app/publish .
+
+# Run the application
+ENTRYPOINT ["dotnet", "Crawler.Worker.dll"]

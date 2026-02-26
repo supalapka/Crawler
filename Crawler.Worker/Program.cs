@@ -4,6 +4,7 @@ using Crawler.Worker.Services;
 using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 class Program
 {
@@ -19,6 +20,10 @@ class Program
             .Bind(configuration.GetSection("ForklogCrawlPolicy"))
             .Validate(p => p.MaxPages > 0);
 
+        services.AddOptions<RetryPolicy>()
+            .Bind(configuration.GetSection("RetryPolicy"))
+            .Validate(p => p.RetryCount > 0 && p.IntervalSeconds > 0);
+
         services.AddSingleton<ICrawlService, ForkLogCrawlService>();
 
         services.AddMassTransit(x =>
@@ -33,8 +38,12 @@ class Program
                     h.Password("guest");
                 });
 
+                var retryPolicy = context.GetRequiredService<IOptions<RetryPolicy>>().Value;
+
                 cfg.ReceiveEndpoint("crawler.start", e =>
                 {
+                    e.UseMessageRetry(r => r.Interval(retryPolicy.RetryCount, 
+                        TimeSpan.FromSeconds(retryPolicy.IntervalSeconds)));
                     e.ConfigureConsumer<StartCrawlConsumer>(context);
                 });
             });

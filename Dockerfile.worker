@@ -15,5 +15,8 @@ FROM mcr.microsoft.com/dotnet/runtime:9.0
 WORKDIR /app
 COPY --from=build /app/publish .
 
+# Set RabbitHost
+ENV RABBITMQ_HOST=host.docker.internal
+
 # Run the application
 ENTRYPOINT ["dotnet", "Crawler.Worker.dll"]

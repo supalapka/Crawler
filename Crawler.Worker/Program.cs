@@ -33,7 +33,9 @@ class Program
 
             x.UsingRabbitMq((context, cfg) =>
             {
-                cfg.Host("localhost", "/", h =>
+                var rabbitHost = configuration["RABBITMQ_HOST"] ?? "localhost";
+
+                cfg.Host(rabbitHost, "/", h =>
                 {
                     h.Username("guest");
                     h.Password("guest");
@@ -63,6 +65,6 @@ class Program
         await bus.StartAsync();
 
         Console.WriteLine("Worker started");
-        Console.ReadLine();
+        await Task.Delay(Timeout.Infinite);
     }
 }

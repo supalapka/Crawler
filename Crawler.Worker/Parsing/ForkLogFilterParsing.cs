@@ -7,6 +7,7 @@ namespace Crawler.Worker.Parsing
     internal class ForkLogFilterParsing
     {
         private readonly IBrowsingContext _context;
+        private readonly Dictionary<string, Regex> _regexCache = new(StringComparer.OrdinalIgnoreCase);
 
         public ForkLogFilterParsing()
         {
@@ -21,7 +22,7 @@ namespace Crawler.Worker.Parsing
             if (contentText is null)
                 return false;
 
-            var regex = BuildRegex(filter);
+            var regex = GetOrBuildRegex(filter);
 
             return regex.IsMatch(contentText);
         }
@@ -36,15 +37,21 @@ namespace Crawler.Worker.Parsing
             return contentElement.TextContent ?? string.Empty;
         }
 
-        private static Regex BuildRegex(string filter)
+        private Regex GetOrBuildRegex(string filter)
         {
             if (string.IsNullOrWhiteSpace(filter))
                 throw new ArgumentException("Filter cannot be empty", nameof(filter));
 
-            return new Regex(
-                $@"(?<!\p{{L}}){Regex.Escape(filter)}(?!\p{{L}})",
-                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled
-            );
+            if (!_regexCache.TryGetValue(filter, out var regex))
+            {
+                regex = new Regex(
+                    $@"(?<!\p{{L}}){Regex.Escape(filter)}(?!\p{{L}})",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled
+                );
+                _regexCache[filter] = regex;
+            }
+
+            return regex;
         }
     }
 }

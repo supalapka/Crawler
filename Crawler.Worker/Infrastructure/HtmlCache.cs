@@ -1,8 +1,10 @@
-﻿namespace Crawler.Worker.Infrastructure
+﻿using System.Collections.Concurrent;
+
+namespace Crawler.Worker.Infrastructure
 {
     internal class HtmlCache
     {
-        private readonly Dictionary<string, string> _cache = new();
+        private readonly ConcurrentDictionary<string, string> _cache = new();
         public int Count => _cache.Count;
 
         public void Store(string url, string html) => _cache[url] = html;

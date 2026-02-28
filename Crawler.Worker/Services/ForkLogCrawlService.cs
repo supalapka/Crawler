@@ -5,6 +5,7 @@ using Crawler.Worker.Parsing;
 using Crawler.Worker.Services;
 using MassTransit;
 using Microsoft.Extensions.Options;
+using System.Net;
 using System.Text.Json;
 
 
@@ -120,7 +121,7 @@ internal class ForkLogCrawlService : ICrawlService
                 Console.WriteLine($"[Fetch end] {DateTime.UtcNow:O}, elapsed: {DateTime.UtcNow - start}");
                 return result;
             }
-            catch (HttpRequestException ex) when (ex.Message.Contains("403"))
+            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Forbidden)
             {
                 Console.WriteLine($"[CrawlService] 403 on {url}, waiting {delays[i]}ms before retry {i + 1}");
                 await Task.Delay(delays[i], cancellationToken);

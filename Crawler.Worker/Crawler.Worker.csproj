@@ -34,4 +34,8 @@
     <ProjectReference Include="..\Crawler.Contracts\Crawler.Contracts.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Crawler.Worker.Tests" />
+  </ItemGroup>
+
 </Project>

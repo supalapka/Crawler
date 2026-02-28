@@ -15,6 +15,8 @@ internal class ForkLogCrawlService : ICrawlService
     {
         public string link { get; set; } = null!;
     }
+    private const string AjaxUrl = "https://forklog.com/wp-content/themes/forklogv2/ajax/getPosts.php";
+    private static readonly int[] RetryDelaysMs = { 3000, 8000, 15000 };
 
     private readonly IPublishEndpoint _publishEndpoint;
 
@@ -23,8 +25,6 @@ internal class ForkLogCrawlService : ICrawlService
 
     private readonly ForkLogFilterParsing _filterParsing = new ForkLogFilterParsing();
     private readonly PageFetcher _fetcher = new PageFetcher();
-
-    private readonly string _ajaxUrl = "https://forklog.com/wp-content/themes/forklogv2/ajax/getPosts.php";
 
     public ForkLogCrawlService(IPublishEndpoint publishEndpoint, IOptions<ForklogCrawlPolicy> options)
     {
@@ -42,8 +42,7 @@ internal class ForkLogCrawlService : ICrawlService
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var bodyPost = GenerateBodyPost(pagePostsOffset);
-            var links = await GetNewsLinksFromPage(bodyPost, cancellationToken);
+            var links = await FetchPageLinksAsync(pagePostsOffset, cancellationToken);
 
             if (!links.Any())
                 break;
@@ -53,13 +52,7 @@ internal class ForkLogCrawlService : ICrawlService
                 if (articlesProcessed >= _policy.MaxPages)
                     break;
 
-                string html;
-
-                if (_htmlCache.TryGet(link, out html) == false)
-                {
-                    html = await FetchWithRetryAsync(link, cancellationToken);
-                    _htmlCache.Store(link, html);
-                }
+                string html = await GetCachedOrFetchAsync(link, cancellationToken);
 
                 if (await _filterParsing.ContentMatchFilter(html, filter))
                     await _publishEndpoint.Publish(new UrlMatched(filter, "", link), cancellationToken);
@@ -75,6 +68,36 @@ internal class ForkLogCrawlService : ICrawlService
         Console.WriteLine($"[CrawlService] END. Articles processed: {articlesProcessed}");
     }
 
+    private async Task<string> GetCachedOrFetchAsync(string url, CancellationToken cancellationToken)
+    {
+        if (_htmlCache.TryGet(url, out var cached))
+            return cached;
+
+        var html = await FetchWithRetryAsync(url, cancellationToken);
+        _htmlCache.Store(url, html);
+        return html;
+    }
+
+    private async Task<List<string>> FetchPageLinksAsync(int pagePostsOffset, CancellationToken cancellationToken)
+    {
+        var bodyPost = GenerateBodyPost(pagePostsOffset);
+        string ajaxResponse = await _fetcher.FetchPostAsync(AjaxUrl, bodyPost, cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(ajaxResponse) || ajaxResponse.Length < 100)
+            return new List<string>();
+
+        var posts = JsonSerializer.Deserialize<List<ForkLogPostDto>>(ajaxResponse);
+
+        if (posts == null || posts.Count == 0)
+            return [];
+
+        return posts
+            .Select(p => p.link)
+            .Where(l => !string.IsNullOrWhiteSpace(l))
+            .Distinct()
+            .ToList();
+    }
+
     private Dictionary<string, string> GenerateBodyPost(int pagePostsOffset)
     {
         return new Dictionary<string, string>
@@ -86,32 +109,9 @@ internal class ForkLogCrawlService : ICrawlService
         };
     }
 
-    private async Task<List<string>> GetNewsLinksFromPage(Dictionary<string, string> bodyPost, CancellationToken cancellationToken)
-    {
-        string ajaxResponse = await _fetcher.FetchPostAsync(_ajaxUrl, bodyPost, cancellationToken);
-
-        if (string.IsNullOrWhiteSpace(ajaxResponse) || ajaxResponse.Length < 100)
-            return new List<string>();
-
-        var posts = JsonSerializer.Deserialize<List<ForkLogPostDto>>(ajaxResponse);
-
-        if (posts == null || posts.Count == 0)
-            return new List<string>();
-
-        var links = posts
-            .Select(p => p.link)
-            .Where(l => !string.IsNullOrWhiteSpace(l))
-            .Distinct()
-            .ToList();
-
-        return links;
-    }
-
     private async Task<string> FetchWithRetryAsync(string url, CancellationToken cancellationToken)
     {
-        int[] delays = { 3000, 8000, 15000 };
-
-        for (int i = 0; i < delays.Length; i++)
+        foreach (var delay in RetryDelaysMs)
         {
             var start = DateTime.UtcNow;
             try
@@ -123,8 +123,8 @@ internal class ForkLogCrawlService : ICrawlService
             }
             catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Forbidden)
             {
-                Console.WriteLine($"[CrawlService] 403 on {url}, waiting {delays[i]}ms before retry {i + 1}");
-                await Task.Delay(delays[i], cancellationToken);
+                Console.WriteLine($"[CrawlService] 403 on {url}, waiting {delay}ms before retry");
+                await Task.Delay(delay, cancellationToken);
             }
         }
 

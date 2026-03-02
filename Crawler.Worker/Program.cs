@@ -45,6 +45,8 @@ class Program
 
                 cfg.ReceiveEndpoint("crawler.start", e =>
                 {
+                    e.ConcurrentMessageLimit = 1;
+                    e.PrefetchCount = 1;
                     e.UseMessageRetry(r =>
                         r.Intervals(
                             Enumerable.Repeat(

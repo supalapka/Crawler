@@ -24,12 +24,13 @@ internal class ForkLogCrawlService : ICrawlService
     private readonly HtmlCache _htmlCache = new();
 
     private readonly ForkLogFilterParsing _filterParsing = new ForkLogFilterParsing();
-    private readonly PageFetcher _fetcher = new PageFetcher();
+    private readonly PageFetcher _fetcher;
 
-    public ForkLogCrawlService(IPublishEndpoint publishEndpoint, IOptions<ForklogCrawlPolicy> options)
+    public ForkLogCrawlService(IPublishEndpoint publishEndpoint, IOptions<ForklogCrawlPolicy> options, PageFetcher fetcher)
     {
         _publishEndpoint = publishEndpoint;
         _policy = options.Value;
+        _fetcher = fetcher;
     }
 
     public async Task StartAsync(string filter, CancellationToken cancellationToken)

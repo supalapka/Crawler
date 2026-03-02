@@ -1,5 +1,6 @@
 ﻿using Crawler.Worker.Config;
 using Crawler.Worker.Consumers;
+using Crawler.Worker.Infrastructure;
 using Crawler.Worker.Services;
 using GreenPipes;
 using MassTransit;
@@ -25,6 +26,7 @@ class Program
             .Bind(configuration.GetSection("RetryPolicy"))
             .Validate(p => p.RetryCount > 0 && p.IntervalSeconds > 0);
 
+        services.AddHttpClient<PageFetcher>();
         services.AddSingleton<ICrawlService, ForkLogCrawlService>();
 
         services.AddMassTransit(x =>

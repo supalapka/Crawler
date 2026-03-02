@@ -2,7 +2,12 @@
 {
     public class PageFetcher
     {
-        private readonly HttpClient _httpClient = new();
+        private readonly HttpClient _httpClient;
+
+        public PageFetcher(HttpClient httpClient)
+        {
+            _httpClient = httpClient;
+        }
 
         public async Task<string> FetchAsync(string url, CancellationToken ct)
         {

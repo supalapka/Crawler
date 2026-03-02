@@ -2,6 +2,7 @@
 using Crawler.Worker.Config;
 using Crawler.Worker.Infrastructure;
 using Crawler.Worker.Parsing;
+using Microsoft.Extensions.Caching.Memory;
 using Crawler.Worker.Services;
 using MassTransit;
 using Microsoft.Extensions.Options;
@@ -21,16 +22,19 @@ internal class ForkLogCrawlService : ICrawlService
     private readonly IPublishEndpoint _publishEndpoint;
 
     private readonly ForklogCrawlPolicy _policy;
-    private readonly HtmlCache _htmlCache = new();
+    private readonly IMemoryCache _htmlCache;
 
     private readonly ForkLogFilterParsing _filterParsing = new ForkLogFilterParsing();
     private readonly PageFetcher _fetcher;
 
-    public ForkLogCrawlService(IPublishEndpoint publishEndpoint, IOptions<ForklogCrawlPolicy> options, PageFetcher fetcher)
+    public ForkLogCrawlService(IPublishEndpoint publishEndpoint,
+        IOptions<ForklogCrawlPolicy> options, PageFetcher fetcher,
+        IMemoryCache htmlCache)
     {
         _publishEndpoint = publishEndpoint;
         _policy = options.Value;
         _fetcher = fetcher;
+        _htmlCache = htmlCache;
     }
 
     public async Task StartAsync(string filter, CancellationToken cancellationToken)
@@ -71,11 +75,11 @@ internal class ForkLogCrawlService : ICrawlService
 
     private async Task<string> GetCachedOrFetchAsync(string url, CancellationToken cancellationToken)
     {
-        if (_htmlCache.TryGet(url, out var cached))
-            return cached;
+        if (_htmlCache.TryGetValue(url, out string? cached))
+            return cached!;
 
         var html = await FetchWithRetryAsync(url, cancellationToken);
-        _htmlCache.Store(url, html);
+        _htmlCache.Set(url, html, TimeSpan.FromHours(_policy.HtmlCacheTtlHours));
         return html;
     }
 

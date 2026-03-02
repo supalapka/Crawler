@@ -26,6 +26,7 @@ class Program
             .Bind(configuration.GetSection("RetryPolicy"))
             .Validate(p => p.RetryCount > 0 && p.IntervalSeconds > 0);
 
+        services.AddMemoryCache();
         services.AddHttpClient<PageFetcher>();
         services.AddSingleton<ICrawlService, ForkLogCrawlService>();
 

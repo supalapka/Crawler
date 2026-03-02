@@ -6,5 +6,6 @@
         public int DelayBetweenRequestsMs { get; init; }
         public int CryptoTagId { get; init; }
         public int PostsPerPage { get; init; }
+        public int HtmlCacheTtlHours { get; init; }
     }
 }

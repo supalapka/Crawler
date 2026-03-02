@@ -1,29 +1,22 @@
-﻿using Crawler.Worker.Config;
+using Crawler.Worker.Config;
 using Crawler.Worker.Consumers;
 using Crawler.Worker.Infrastructure;
 using Crawler.Worker.Services;
 using GreenPipes;
 using MassTransit;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
-class Program
-{
-    static async Task Main()
+var builder = Host.CreateDefaultBuilder(args)
+    .ConfigureServices((ctx, services) =>
     {
-        var services = new ServiceCollection();
-        var configuration = new ConfigurationBuilder()
-           .AddJsonFile("appsettings.json", optional: false)
-           .AddEnvironmentVariables()
-           .Build();
-
         services.AddOptions<ForklogCrawlPolicy>()
-            .Bind(configuration.GetSection("ForklogCrawlPolicy"))
+            .Bind(ctx.Configuration.GetSection("ForklogCrawlPolicy"))
             .Validate(p => p.MaxPages > 0);
 
         services.AddOptions<RetryPolicy>()
-            .Bind(configuration.GetSection("RetryPolicy"))
+            .Bind(ctx.Configuration.GetSection("RetryPolicy"))
             .Validate(p => p.RetryCount > 0 && p.IntervalSeconds > 0);
 
         services.AddMemoryCache();
@@ -36,7 +29,7 @@ class Program
 
             x.UsingRabbitMq((context, cfg) =>
             {
-                var rabbitHost = configuration["RABBITMQ_HOST"] ?? "localhost";
+                var rabbitHost = ctx.Configuration["RABBITMQ_HOST"] ?? "localhost";
 
                 cfg.Host(rabbitHost, "/", h =>
                 {
@@ -64,12 +57,7 @@ class Program
             });
         });
 
-        var provider = services.BuildServiceProvider();
+        services.AddHostedService<MassTransitHostedService>();
+    });
 
-        var bus = provider.GetRequiredService<IBusControl>();
-        await bus.StartAsync();
-
-        Console.WriteLine("Worker started");
-        await Task.Delay(Timeout.Infinite);
-    }
-}
+await builder.Build().RunAsync();

@@ -34,12 +34,10 @@ internal static class ServiceCollectionExtensions
 
             x.UsingRabbitMq((context, cfg) =>
             {
-                var rabbitHost = configuration["RABBITMQ_HOST"] ?? "localhost";
-
-                cfg.Host(rabbitHost, "/", h =>
+                cfg.Host(configuration["RabbitMq:Host"] ?? "localhost", "/", h =>
                 {
-                    h.Username("guest");
-                    h.Password("guest");
+                    h.Username(configuration["RabbitMq:Username"] ?? "guest");
+                    h.Password(configuration["RabbitMq:Password"] ?? "guest");
                 });
 
                 var retryPolicy = context.GetRequiredService<IOptions<RetryPolicy>>().Value;
